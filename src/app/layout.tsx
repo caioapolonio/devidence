@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import { HealthBanner } from "@/components/HealthBanner";
 import { Sidebar } from "@/components/Sidebar";
 import "./globals.css";
 
@@ -34,7 +33,6 @@ export default function RootLayout({
       <body className="flex min-h-full">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
-          <HealthBanner />
           <main className="flex-1 px-8 py-6">{children}</main>
         </div>
       </body>
