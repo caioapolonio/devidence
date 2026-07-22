@@ -1,0 +1,5 @@
+allowBuilds:
+  # Otimização de imagens do Next.
+  sharp: true
+  # Resolvedor nativo do eslint-config-next.
+  unrs-resolver: true
