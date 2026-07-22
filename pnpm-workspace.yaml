@@ -1,5 +1,7 @@
 allowBuilds:
   # Otimização de imagens do Next.
   sharp: true
+  # Instala o hook de commit-msg que valida Conventional Commits.
+  simple-git-hooks: true
   # Resolvedor nativo do eslint-config-next.
   unrs-resolver: true
