@@ -1,7 +1,9 @@
 /**
- * Espelha `SidebarDestination` do app macOS (GitManager/Domain/AppTypes.swift).
- * Os títulos são os mesmos do app nativo para que a migração não mude o
- * vocabulário que o usuário já conhece.
+ * Navegação.
+ *
+ * O app macOS de origem tinha quatro seções porque explorava a atividade antes
+ * de gerar o relatório. Aqui o fluxo é direto — escolher projeto e período,
+ * gerar — então só sobraram duas.
  */
 export type Destination = {
   href: string;
@@ -9,26 +11,6 @@ export type Destination = {
 };
 
 export const destinations: Destination[] = [
-  { href: "/", title: "Visão geral" },
-  { href: "/atividade", title: "Atividade" },
+  { href: "/", title: "Novo relatório" },
   { href: "/relatorios", title: "Relatórios" },
-  { href: "/configuracoes", title: "Configurações" },
 ];
-
-/** Espelha `ActivityPerspective`. */
-export const perspectives = {
-  personal: "Minha contribuição",
-  project: "Projeto inteiro",
-  comparison: "Comparar ambos",
-} as const;
-
-export type Perspective = keyof typeof perspectives;
-
-/** Espelha `SyncStatus`. */
-export type SyncStatus = "idle" | "syncing" | "complete" | "partial" | "failed";
-
-/** Limites herdados do app nativo; a web não os afrouxa. */
-export const limits = {
-  maxRepositories: 5,
-  maxIntervalDays: 365,
-} as const;
