@@ -9,7 +9,7 @@ O nome vem de *dev* + *evidence*: a premissa do produto é que nenhuma alegaçã
 Este repositório está no começo. O que existe hoje é o esqueleto do front: a navegação e as quatro telas, todas ainda sem dados.
 
 - [x] Shell do front — Next 16, TypeScript, Tailwind 4, App Router.
-- [ ] Login com OAuth do GitHub.
+- [x] Login com OAuth do GitHub.
 - [ ] Seleção de repositório e período.
 - [ ] Busca de commits, PRs, reviews, issues e releases, com atribuição pessoal.
 - [ ] Geração do relatório com evidências rastreáveis.
@@ -17,8 +17,17 @@ Este repositório está no começo. O que existe hoje é o esqueleto do front: a
 
 ## Rodar
 
+Crie um OAuth App em [Developer settings](https://github.com/settings/developers) → **New OAuth App**:
+
+| Campo | Valor |
+|---|---|
+| Homepage URL | `http://localhost:3000` |
+| Authorization callback URL | `http://localhost:3000/api/auth/callback` |
+
+Depois:
+
 ```sh
-cp .env.example .env.local
+cp .env.example .env.local   # preencha o client id, o secret e o SESSION_SECRET
 pnpm install
 pnpm dev
 ```
