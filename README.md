@@ -10,7 +10,7 @@ Este repositório está no começo. O que existe hoje é o esqueleto do front: a
 
 - [x] Shell do front — Next 16, TypeScript, Tailwind 4, App Router.
 - [x] Login com OAuth do GitHub.
-- [ ] Seleção de repositório e período.
+- [x] Seleção de repositório e período.
 - [ ] Busca de commits, PRs, reviews, issues e releases, com atribuição pessoal.
 - [ ] Geração do relatório com evidências rastreáveis.
 - [ ] Exportação do PDF 16:9.
