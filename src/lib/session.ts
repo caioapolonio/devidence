@@ -2,6 +2,7 @@ import { getIronSession, type SessionOptions } from "iron-session";
 import { cookies } from "next/headers";
 
 import { isProduction, serverEnv } from "@/lib/env";
+import type { LlmCredentials } from "@/lib/llm/types";
 
 /**
  * Sessão do usuário.
@@ -24,6 +25,11 @@ export type SessionUser = {
 
 export type SessionData = {
   user?: SessionUser;
+  /**
+   * Chave de LLM do próprio usuário. Mesmo tratamento do token do GitHub:
+   * cifrada no cookie, nunca em banco, some ao sair.
+   */
+  llm?: LlmCredentials;
 };
 
 /**
@@ -55,4 +61,10 @@ export async function getSession() {
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await getSession();
   return session.user ?? null;
+}
+
+/** Credenciais de LLM da sessão, ou `null`. */
+export async function getLlmCredentials(): Promise<LlmCredentials | null> {
+  const session = await getSession();
+  return session.llm ?? null;
 }

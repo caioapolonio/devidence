@@ -13,4 +13,5 @@ export type Destination = {
 export const destinations: Destination[] = [
   { href: "/", title: "Novo relatório" },
   { href: "/relatorios", title: "Relatórios" },
+  { href: "/configuracoes", title: "Configurações" },
 ];
