@@ -5,7 +5,7 @@ export function PageHeader({
 }: {
   title: string;
   subtitle: string;
-  /** Etapa que ainda vai preencher esta tela. */
+  /** Step that will still fill in this screen. */
   pending?: string;
 }) {
   return (

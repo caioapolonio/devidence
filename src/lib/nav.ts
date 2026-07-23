@@ -1,9 +1,9 @@
 /**
- * Navegação.
+ * Navigation.
  *
- * O app macOS de origem tinha quatro seções porque explorava a atividade antes
- * de gerar o relatório. Aqui o fluxo é direto — escolher projeto e período,
- * gerar — então só sobraram duas.
+ * The macOS app it descends from had four sections because it explored the
+ * activity before generating the report. Here the flow is direct: pick a
+ * project and a period, generate. Only three remain.
  */
 export type Destination = {
   href: string;
@@ -11,7 +11,7 @@ export type Destination = {
 };
 
 export const destinations: Destination[] = [
-  { href: "/", title: "Novo relatório" },
-  { href: "/relatorios", title: "Relatórios" },
-  { href: "/configuracoes", title: "Configurações" },
+  { href: "/", title: "New report" },
+  { href: "/reports", title: "Reports" },
+  { href: "/settings", title: "Settings" },
 ];

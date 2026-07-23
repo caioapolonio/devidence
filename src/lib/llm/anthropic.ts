@@ -9,58 +9,58 @@ function client(apiKey: string): Anthropic {
 }
 
 /**
- * Modelos da Anthropic que servem para este produto.
+ * Anthropic models that work for this product.
  *
- * A API informa a capacidade, então o filtro é factual e nunca desatualiza: se
- * a Anthropic lançar um modelo novo com structured outputs, ele aparece sozinho
- * na lista; se aposentar um, ele some.
+ * The API reports capability, so the filter is factual and never goes stale: if
+ * Anthropic ships a new model with structured outputs, it shows up on its own;
+ * if it retires one, it disappears.
  *
- * `effort` vem junto porque é uma pegadinha separada — o Haiku 4.5 suporta
- * structured outputs mas **rejeita** o parâmetro `effort`. Mandar effort para
- * ele seria um 400 na hora de gerar o relatório.
+ * `effort` comes along because it's a separate gotcha: Haiku 4.5 supports
+ * structured outputs but rejects the `effort` parameter. Sending effort to it
+ * would be a 400 at report-generation time.
  */
 export async function listAnthropicModels(apiKey: string): Promise<LlmModel[]> {
-  const modelos: LlmModel[] = [];
+  const models: LlmModel[] = [];
 
-  for await (const modelo of client(apiKey).models.list({ limit: 100 })) {
-    if (!modelo.capabilities?.structured_outputs?.supported) continue;
+  for await (const model of client(apiKey).models.list({ limit: 100 })) {
+    if (!model.capabilities?.structured_outputs?.supported) continue;
 
-    modelos.push({
-      id: modelo.id,
-      displayName: modelo.display_name ?? modelo.id,
+    models.push({
+      id: model.id,
+      displayName: model.display_name ?? model.id,
       supportsStructuredOutputs: true,
-      supportsEffort: modelo.capabilities.effort?.supported ?? false,
+      supportsEffort: model.capabilities.effort?.supported ?? false,
     });
   }
 
-  return sortModels(modelos);
+  return sortModels(models);
 }
 
 /**
- * Confirma na prática que o modelo devolve saída estruturada.
+ * Confirms in practice that the model returns structured output.
  *
- * Redundante na Anthropic, já que a API declara a capacidade — mas manter a
- * mesma sonda nos dois provedores significa que a interface tem um caminho só,
- * e que a confirmação vale para o modelo específico e a chave específica, não
- * para o que a documentação diz.
+ * Redundant on Anthropic, since the API declares the capability, but keeping the
+ * same probe across both providers means the UI has a single path, and that the
+ * confirmation is about this specific model and this specific key, not about
+ * what the docs say.
  *
- * `thinking` e `effort` ficam de fora de propósito: `effort` dá erro no Haiku
- * 4.5, e `thinking: disabled` dá erro no Fable 5. Omitir os dois funciona em
- * todos. O `max_tokens` é folgado porque, quando o thinking adaptativo está
- * ligado por padrão, ele consome do mesmo orçamento da resposta.
+ * `thinking` and `effort` are left out on purpose: `effort` errors on Haiku 4.5,
+ * and `thinking: disabled` errors on Fable 5. Omitting both works everywhere.
+ * `max_tokens` is generous because, when adaptive thinking is on by default, it
+ * draws from the same budget as the response.
  */
 export async function probeAnthropic(
   apiKey: string,
   model: string,
 ): Promise<boolean> {
-  const resposta = await client(apiKey).messages.parse({
+  const response = await client(apiKey).messages.parse({
     model,
     max_tokens: 2048,
     output_config: { format: zodOutputFormat(ProbeSchema) },
     messages: [
-      { role: "user", content: "Responda com ok igual a true. Nada além disso." },
+      { role: "user", content: "Reply with ok set to true. Nothing else." },
     ],
   });
 
-  return resposta.parsed_output?.ok === true;
+  return response.parsed_output?.ok === true;
 }

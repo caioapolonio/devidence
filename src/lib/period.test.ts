@@ -8,54 +8,54 @@ import {
   MAX_PERIOD_DAYS,
 } from "@/lib/period";
 
-// Meio do dia, para provar que a normalização ignora a hora.
+// Midday, to prove that normalization ignores the time of day.
 const NOW = new Date("2026-07-22T15:42:31.123Z");
 
 describe("clampDays", () => {
-  it("mantém valores dentro do intervalo", () => {
+  it("keeps values within range", () => {
     expect(clampDays(30)).toBe(30);
     expect(clampDays(1)).toBe(1);
     expect(clampDays(365)).toBe(365);
   });
 
-  it("grampeia valores fora do intervalo em vez de rejeitar", () => {
+  it("clamps out-of-range values instead of rejecting them", () => {
     expect(clampDays(0)).toBe(1);
     expect(clampDays(-40)).toBe(1);
     expect(clampDays(5000)).toBe(MAX_PERIOD_DAYS);
   });
 
-  it("cai no padrão quando o número não é utilizável", () => {
+  it("falls back to the default when the number is not usable", () => {
     expect(clampDays(Number.NaN)).toBe(DEFAULT_PERIOD_DAYS);
     expect(clampDays(Number.POSITIVE_INFINITY)).toBe(DEFAULT_PERIOD_DAYS);
   });
 
-  it("trunca frações", () => {
+  it("truncates fractions", () => {
     expect(clampDays(30.9)).toBe(30);
   });
 });
 
 describe("lastDays", () => {
-  it("inclui o dia de hoje inteiro", () => {
+  it("includes the whole of today", () => {
     const period = lastDays(1, NOW);
     expect(period.start.toISOString()).toBe("2026-07-22T00:00:00.000Z");
     expect(period.end.toISOString()).toBe("2026-07-22T23:59:59.999Z");
     expect(period.dayCount).toBe(1);
   });
 
-  it("conta hoje como um dos dias pedidos", () => {
-    // 30 dias = hoje + os 29 anteriores, não hoje + 30.
+  it("counts today as one of the requested days", () => {
+    // 30 days = today plus the preceding 29, not today plus 30.
     const period = lastDays(30, NOW);
     expect(period.start.toISOString()).toBe("2026-06-23T00:00:00.000Z");
     expect(period.end.toISOString()).toBe("2026-07-22T23:59:59.999Z");
   });
 
-  it("atravessa a virada de ano", () => {
+  it("crosses the year boundary", () => {
     const period = lastDays(60, new Date("2026-01-15T08:00:00.000Z"));
     expect(period.start.toISOString()).toBe("2025-11-17T00:00:00.000Z");
     expect(period.dayCount).toBe(60);
   });
 
-  it("nunca cobre mais que o máximo, mesmo se pedirem", () => {
+  it("never covers more than the maximum, even when asked", () => {
     const period = lastDays(10_000, NOW);
     expect(period.dayCount).toBe(MAX_PERIOD_DAYS);
 
@@ -64,15 +64,15 @@ describe("lastDays", () => {
     expect(spanDays).toBe(MAX_PERIOD_DAYS);
   });
 
-  it("descarta a hora do momento informado", () => {
-    const meioDia = lastDays(7, new Date("2026-07-22T12:00:00.000Z"));
-    const quaseMeiaNoite = lastDays(7, new Date("2026-07-22T23:59:00.000Z"));
-    expect(meioDia).toEqual(quaseMeiaNoite);
+  it("discards the time of day of the given moment", () => {
+    const midday = lastDays(7, new Date("2026-07-22T12:00:00.000Z"));
+    const nearMidnight = lastDays(7, new Date("2026-07-22T23:59:00.000Z"));
+    expect(midday).toEqual(nearMidnight);
   });
 });
 
 describe("formatPeriodLabel", () => {
-  it("usa UTC para não deslocar a data conforme o fuso da máquina", () => {
-    expect(formatPeriodLabel(lastDays(30, NOW))).toBe("23/06/2026 a 22/07/2026");
+  it("uses UTC so the date doesn't shift with the machine's timezone", () => {
+    expect(formatPeriodLabel(lastDays(30, NOW))).toBe("6/23/2026 to 7/22/2026");
   });
 });

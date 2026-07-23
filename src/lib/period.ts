@@ -1,28 +1,29 @@
 /**
- * Janela de tempo do relatório.
+ * Report time window.
  *
- * Porta `DateIntervalSelection` do app macOS: o intervalo é sempre de 1 a 365
- * dias, e valores fora disso são grampeados em vez de rejeitados — pedir 0 ou
- * 5.000 dias é erro de chamada, não motivo para quebrar a geração.
+ * Ports `DateIntervalSelection` from the macOS app: the interval is always
+ * between 1 and 365 days, and out-of-range values are clamped rather than
+ * rejected. Asking for 0 or 5,000 days is a caller bug, not a reason to break
+ * generation.
  *
- * As fronteiras são calculadas em UTC. O GitHub devolve todos os timestamps em
- * UTC, então alinhar aqui evita um dia de diferença entre o que o usuário pediu
- * e o que a API filtrou. O rótulo exibido na interface deve deixar isso claro.
+ * Boundaries are computed in UTC. GitHub returns every timestamp in UTC, so
+ * aligning here avoids a one-day gap between what the user asked for and what
+ * the API filtered. The label shown in the UI should make that explicit.
  */
 export const MAX_PERIOD_DAYS = 365;
 export const MIN_PERIOD_DAYS = 1;
 
-/** Opções oferecidas na interface. */
+/** Options offered in the UI. */
 export const PERIOD_OPTIONS = [7, 30, 90, 180, 365] as const;
 
 export const DEFAULT_PERIOD_DAYS = 30;
 
 export type Period = {
-  /** Início do primeiro dia da janela, 00:00:00.000 UTC. */
+  /** Start of the first day in the window, 00:00:00.000 UTC. */
   start: Date;
-  /** Fim do último dia da janela, 23:59:59.999 UTC. */
+  /** End of the last day in the window, 23:59:59.999 UTC. */
   end: Date;
-  /** Quantidade de dias efetivamente coberta, já grampeada. */
+  /** Number of days actually covered, already clamped. */
   dayCount: number;
 };
 
@@ -38,10 +39,10 @@ function startOfUTCDay(date: Date): Date {
 }
 
 /**
- * Janela dos últimos `days` dias, incluindo o dia de hoje.
+ * Window of the last `days` days, including today.
  *
- * `lastDays(1)` cobre apenas hoje; `lastDays(30)` cobre hoje e os 29 dias
- * anteriores.
+ * `lastDays(1)` covers only today; `lastDays(30)` covers today and the
+ * preceding 29 days.
  */
 export function lastDays(days: number, now: Date = new Date()): Period {
   const dayCount = clampDays(days);
@@ -56,8 +57,8 @@ export function lastDays(days: number, now: Date = new Date()): Period {
   };
 }
 
-/** Rótulo do período para a capa do relatório. */
+/** Period label for the report cover. */
 export function formatPeriodLabel(period: Period): string {
-  const formatter = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
-  return `${formatter.format(period.start)} a ${formatter.format(period.end)}`;
+  const formatter = new Intl.DateTimeFormat("en-US", { timeZone: "UTC" });
+  return `${formatter.format(period.start)} to ${formatter.format(period.end)}`;
 }

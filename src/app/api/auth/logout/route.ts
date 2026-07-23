@@ -5,12 +5,13 @@ import { getSession } from "@/lib/session";
 export const runtime = "nodejs";
 
 /**
- * Encerra a sessão.
+ * Ends the session.
  *
- * Como o token do GitHub só existe dentro do cookie, destruir a sessão apaga o
- * token de verdade — não há cópia em banco para revogar depois.
+ * Because the GitHub token only exists inside the cookie, destroying the session
+ * actually erases the token: there is no database copy to revoke afterwards.
  *
- * É POST de propósito: logout por GET é acionável por `<img src>` de terceiro.
+ * It's POST on purpose: logout over GET is triggerable by a third party's
+ * `<img src>`.
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();

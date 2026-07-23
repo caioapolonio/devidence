@@ -12,11 +12,11 @@ import { isProduction, serverEnv } from "@/lib/env";
 export const runtime = "nodejs";
 
 /**
- * Início do fluxo OAuth.
+ * Start of the OAuth flow.
  *
- * O `state` é gerado aqui, guardado num cookie httpOnly e reconferido no
- * callback. É o que impede alguém de forjar um retorno de autorização e
- * conectar a conta do GitHub dele à sessão de outra pessoa.
+ * The `state` is generated here, kept in an httpOnly cookie, and re-checked in
+ * the callback. It's what stops someone from forging an authorization return and
+ * attaching their GitHub account to another person's session.
  */
 export async function GET() {
   const state = createState();

@@ -3,10 +3,11 @@ import { listOpenAIModels, probeOpenAI } from "@/lib/llm/openai";
 import type { LlmModel, LlmProvider } from "@/lib/llm/types";
 
 /**
- * Ponto único de despacho por provedor.
+ * Single dispatch point per provider.
  *
- * Todo o resto do app fala com estas duas funções e não sabe qual SDK está por
- * baixo. Quando a geração do relatório chegar, ela entra aqui do mesmo jeito.
+ * The rest of the app talks to these two functions and does not know which SDK
+ * sits underneath. When report generation arrives, it plugs in here the same
+ * way.
  */
 
 export async function listModels(

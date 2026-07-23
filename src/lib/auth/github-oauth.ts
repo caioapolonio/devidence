@@ -1,11 +1,11 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 
 /**
- * Peças puras do fluxo OAuth do GitHub.
+ * Pure pieces of the GitHub OAuth flow.
  *
- * Ficam separadas das rotas para poderem ser testadas sem rede — em especial a
- * validação do `state`, que é a proteção contra CSRF e o ponto onde OAuth
- * escrito à mão costuma falhar em silêncio.
+ * Kept apart from the routes so they can be tested without the network, in
+ * particular the `state` validation, which is the CSRF protection and the spot
+ * where hand-written OAuth tends to fail silently.
  */
 
 export const GITHUB_AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
@@ -13,15 +13,15 @@ export const GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token";
 export const GITHUB_API_USER_URL = "https://api.github.com/user";
 
 /**
- * `read:user` identifica quem está logado; `repo` é necessário porque o caso de
- * uso real do produto é relatório sobre trabalho em repositório privado de
- * cliente. Não existe escopo intermediário no OAuth clássico do GitHub: ou é
- * `public_repo`, ou é acesso completo de repositório.
+ * `read:user` identifies who is logged in; `repo` is needed because the real use
+ * case is a report about work in a client's private repository. There is no
+ * middle-ground scope in GitHub's classic OAuth: it's either `public_repo` or
+ * full repository access.
  */
 export const GITHUB_SCOPES = ["read:user", "repo"] as const;
 
 export const STATE_COOKIE = "devidence_oauth_state";
-/** Dez minutos: tempo de sobra para o usuário decidir, curto para replay. */
+/** Ten minutes: plenty for the user to decide, short for replay. */
 export const STATE_MAX_AGE_SECONDS = 600;
 
 export function createState(): string {
@@ -29,8 +29,8 @@ export function createState(): string {
 }
 
 /**
- * Comparação em tempo constante. Um `===` aqui vaza, pelo tempo de resposta,
- * quantos caracteres iniciais o atacante acertou.
+ * Constant-time comparison. A `===` here would leak, through response time, how
+ * many leading characters the attacker got right.
  */
 export function isValidState(
   received: string | undefined | null,
@@ -40,8 +40,8 @@ export function isValidState(
 
   const a = Buffer.from(received, "utf8");
   const b = Buffer.from(expected, "utf8");
-  // timingSafeEqual exige tamanhos iguais; comparar o tamanho antes não vaza
-  // nada além do que o próprio formato do state já revela.
+  // timingSafeEqual requires equal lengths; comparing length first leaks nothing
+  // beyond what the state format already reveals.
   if (a.length !== b.length) return false;
 
   return timingSafeEqual(a, b);
@@ -71,22 +71,22 @@ export type GitHubUser = {
   avatarUrl: string;
 };
 
-/** Motivos de falha que a tela de login sabe explicar em português. */
+/** Failure reasons the login screen knows how to explain. */
 export type AuthFailure =
-  | "acesso_negado"
-  | "estado_invalido"
-  | "troca_falhou"
-  | "usuario_indisponivel";
+  | "access_denied"
+  | "invalid_state"
+  | "exchange_failed"
+  | "user_unavailable";
 
 /**
- * Traduz o parâmetro `error` que o GitHub devolve quando o usuário recusa a
- * autorização. Qualquer outro valor cai em `troca_falhou` — não vale a pena
- * modelar cada código do GitHub, mas engolir o erro seria pior.
+ * Translates the `error` parameter GitHub returns when the user declines
+ * authorization. Any other value falls into `exchange_failed`: modeling every
+ * GitHub code isn't worth it, but swallowing the error would be worse.
  */
 export function mapGitHubError(error: string | null): AuthFailure | null {
   if (!error) return null;
-  if (error === "access_denied") return "acesso_negado";
-  return "troca_falhou";
+  if (error === "access_denied") return "access_denied";
+  return "exchange_failed";
 }
 
 export async function exchangeCodeForToken(params: {
@@ -101,7 +101,7 @@ export async function exchangeCodeForToken(params: {
   const response = await doFetch(GITHUB_TOKEN_URL, {
     method: "POST",
     headers: {
-      // Sem isto o GitHub responde form-encoded em vez de JSON.
+      // Without this GitHub replies form-encoded instead of JSON.
       Accept: "application/json",
       "Content-Type": "application/json",
     },

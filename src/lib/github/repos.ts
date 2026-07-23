@@ -1,10 +1,10 @@
 /**
- * Repositórios que o usuário pode escolher.
+ * Repositories the user can pick from.
  *
- * A normalização e a ordenação ficam separadas da chamada de rede para poderem
- * ser testadas sem GitHub. O que a API devolve é grande e cheio de campos que
- * não usamos; guardar só o necessário evita carregar dado de repositório
- * privado por engano para o cliente.
+ * Normalization and sorting are kept apart from the network call so they can be
+ * tested without GitHub. What the API returns is large and full of fields we
+ * don't use; keeping only what's needed avoids carrying private-repo detail to
+ * the client by accident.
  */
 
 export type Repository = {
@@ -17,12 +17,12 @@ export type Repository = {
   isFork: boolean;
   defaultBranch: string;
   htmlUrl: string;
-  /** ISO 8601. Null quando o repositório nunca recebeu push. */
+  /** ISO 8601. Null when the repository has never been pushed to. */
   pushedAt: string | null;
   description: string | null;
 };
 
-/** Recorte dos campos da API que realmente usamos. */
+/** The subset of API fields we actually use. */
 export type RawRepository = {
   id: number;
   name: string;
@@ -42,7 +42,7 @@ export function normalizeRepository(raw: RawRepository): Repository {
     id: raw.id,
     name: raw.name,
     fullName: raw.full_name,
-    // O `owner` pode vir nulo em respostas de repositório apagado.
+    // `owner` can come back null in responses for a deleted repository.
     owner: raw.owner?.login ?? raw.full_name.split("/")[0] ?? "",
     isPrivate: raw.private,
     isArchived: raw.archived,
@@ -55,8 +55,8 @@ export function normalizeRepository(raw: RawRepository): Repository {
 }
 
 /**
- * Mais recentes primeiro. Repositório sem push nenhum vai para o fim em vez de
- * ser descartado — pode ser um projeto novo que a pessoa quer relatar.
+ * Most recent first. A repository with no pushes at all goes to the end rather
+ * than being dropped: it may be a new project the person wants to report on.
  */
 export function sortByRecentActivity(repositories: Repository[]): Repository[] {
   return [...repositories].sort((a, b) => {
@@ -68,8 +68,8 @@ export function sortByRecentActivity(repositories: Repository[]): Repository[] {
 }
 
 /**
- * Busca por nome ou descrição, sem diferenciar maiúsculas nem acentos — o
- * usuário digitando "sao" precisa achar "São Paulo".
+ * Search by name or description, ignoring case and accents. Someone typing
+ * "sao" needs to find "São Paulo".
  */
 export function filterRepositories(
   repositories: Repository[],

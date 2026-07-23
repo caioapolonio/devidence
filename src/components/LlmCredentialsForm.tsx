@@ -10,118 +10,132 @@ import {
   type LlmProvider,
 } from "@/lib/llm/types";
 
-type Credenciais = {
+type Credentials = {
   provider: LlmProvider;
   model: string;
   verifiedAt: string;
 };
 
 export function LlmCredentialsForm() {
-  const [credenciais, setCredenciais] = useState<Credenciais | null | undefined>(
+  const [credentials, setCredentials] = useState<Credentials | null | undefined>(
     undefined,
   );
   const [provider, setProvider] = useState<LlmProvider>("anthropic");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<LlmModel[] | null>(null);
   const [model, setModel] = useState("");
-  const [ocupado, setOcupado] = useState<null | "listando" | "verificando">(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "listing" | "verifying">(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/llm/credentials")
       .then((r) => r.json())
-      .then((d) => setCredenciais(d.credenciais ?? null))
-      .catch(() => setCredenciais(null));
+      .then((d) => setCredentials(d.credentials ?? null))
+      .catch(() => setCredentials(null));
   }, []);
 
-  async function buscarModelos() {
-    setOcupado("listando");
-    setErro(null);
+  /**
+   * Switching provider clears the key and any listed models. A key for one
+   * provider is useless on the other, and keeping it around only raises the
+   * chance of sending the wrong one.
+   */
+  function switchProvider(next: LlmProvider) {
+    setProvider(next);
+    setApiKey("");
+    setModels(null);
+    setModel("");
+    setError(null);
+  }
+
+  async function fetchModels() {
+    setBusy("listing");
+    setError(null);
     setModels(null);
 
     try {
-      const resposta = await fetch("/api/llm/models", {
+      const response = await fetch("/api/llm/models", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, apiKey }),
       });
-      const dados = await resposta.json();
+      const data = await response.json();
 
-      if (!resposta.ok) {
-        setErro(dados.erro ?? "Não foi possível listar os modelos.");
+      if (!response.ok) {
+        setError(data.error ?? "Could not list the models.");
         return;
       }
 
-      setModels(dados.models);
-      setModel(dados.models[0]?.id ?? "");
+      setModels(data.models);
+      setModel(data.models[0]?.id ?? "");
     } catch {
-      setErro("Não foi possível falar com o servidor.");
+      setError("Could not reach the server.");
     } finally {
-      setOcupado(null);
+      setBusy(null);
     }
   }
 
-  async function verificarESalvar() {
-    setOcupado("verificando");
-    setErro(null);
+  async function verifyAndSave() {
+    setBusy("verifying");
+    setError(null);
 
     try {
-      const resposta = await fetch("/api/llm/credentials", {
+      const response = await fetch("/api/llm/credentials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, apiKey, model }),
       });
-      const dados = await resposta.json();
+      const data = await response.json();
 
-      if (!resposta.ok) {
-        setErro(dados.erro ?? "Não foi possível verificar o modelo.");
+      if (!response.ok) {
+        setError(data.error ?? "Could not verify the model.");
         return;
       }
 
-      setCredenciais(dados.credenciais);
-      // A chave sai da memória do componente assim que é selada na sessão.
+      setCredentials(data.credentials);
+      // The key leaves the component's memory the moment it's sealed into the
+      // session.
       setApiKey("");
       setModels(null);
     } catch {
-      setErro("Não foi possível falar com o servidor.");
+      setError("Could not reach the server.");
     } finally {
-      setOcupado(null);
+      setBusy(null);
     }
   }
 
-  async function remover() {
+  async function remove() {
     await fetch("/api/llm/credentials", { method: "DELETE" });
-    setCredenciais(null);
+    setCredentials(null);
     setModels(null);
     setApiKey("");
   }
 
-  if (credenciais === undefined) {
-    return <p className="text-sm text-black/50 dark:text-white/50">Carregando…</p>;
+  if (credentials === undefined) {
+    return <p className="text-sm text-black/50 dark:text-white/50">Loading…</p>;
   }
 
-  if (credenciais) {
+  if (credentials) {
     return (
       <div className="max-w-2xl space-y-4">
         <div className="rounded-md border border-black/10 px-4 py-3 dark:border-white/10">
           <p className="text-sm">
             <span className="font-medium">
-              {PROVIDER_LABELS[credenciais.provider]}
+              {PROVIDER_LABELS[credentials.provider]}
             </span>{" "}
-            · <code className="text-[13px]">{credenciais.model}</code>
+            · <code className="text-[13px]">{credentials.model}</code>
           </p>
           <p className="mt-1 text-sm text-black/55 dark:text-white/55">
-            Saída estruturada confirmada em{" "}
-            {new Date(credenciais.verifiedAt).toLocaleString("pt-BR")}.
+            Structured output confirmed on{" "}
+            {new Date(credentials.verifiedAt).toLocaleString("en-US")}.
           </p>
         </div>
 
         <button
           type="button"
-          onClick={remover}
+          onClick={remove}
           className="rounded-md border border-black/15 px-3 py-1.5 text-sm transition-colors hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/5"
         >
-          Remover chave
+          Remove key
         </button>
       </div>
     );
@@ -130,25 +144,21 @@ export function LlmCredentialsForm() {
   return (
     <div className="max-w-2xl space-y-6">
       <fieldset>
-        <legend className="text-sm font-medium">Provedor</legend>
+        <legend className="text-sm font-medium">Provider</legend>
         <div className="mt-2 flex gap-2">
-          {LLM_PROVIDERS.map((opcao) => (
+          {LLM_PROVIDERS.map((option) => (
             <button
-              key={opcao}
+              key={option}
               type="button"
-              onClick={() => {
-                setProvider(opcao);
-                setModels(null);
-                setErro(null);
-              }}
-              aria-pressed={provider === opcao}
+              onClick={() => switchProvider(option)}
+              aria-pressed={provider === option}
               className={`rounded-md border px-3 py-1.5 text-sm transition-colors ${
-                provider === opcao
+                provider === option
                   ? "border-black/40 bg-black/[0.07] dark:border-white/40 dark:bg-white/10"
                   : "border-black/15 hover:bg-black/[0.04] dark:border-white/15 dark:hover:bg-white/5"
               }`}
             >
-              {PROVIDER_LABELS[opcao]}
+              {PROVIDER_LABELS[option]}
             </button>
           ))}
         </div>
@@ -156,19 +166,19 @@ export function LlmCredentialsForm() {
 
       <div>
         <label htmlFor="apiKey" className="block text-sm font-medium">
-          Chave de API
+          API key
         </label>
         <input
           id="apiKey"
           type="password"
           autoComplete="off"
           value={apiKey}
-          onChange={(evento) => setApiKey(evento.target.value)}
+          onChange={(event) => setApiKey(event.target.value)}
           placeholder={provider === "anthropic" ? "sk-ant-…" : "sk-…"}
           className="mt-2 w-full rounded-md border border-black/15 bg-transparent px-3 py-2 font-mono text-sm outline-none focus:border-black/40 dark:border-white/15 dark:focus:border-white/40"
         />
         <p className="mt-1.5 text-sm text-black/55 dark:text-white/55">
-          Pegue a sua em{" "}
+          Get yours at{" "}
           <a
             className="underline underline-offset-2"
             href={PROVIDER_KEY_URLS[provider]}
@@ -184,11 +194,11 @@ export function LlmCredentialsForm() {
       {!models && (
         <button
           type="button"
-          onClick={buscarModelos}
-          disabled={!apiKey || ocupado !== null}
+          onClick={fetchModels}
+          disabled={!apiKey || busy !== null}
           className="rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-white dark:text-black"
         >
-          {ocupado === "listando" ? "Buscando modelos…" : "Buscar modelos"}
+          {busy === "listing" ? "Fetching models…" : "Fetch models"}
         </button>
       )}
 
@@ -196,44 +206,44 @@ export function LlmCredentialsForm() {
         <>
           <div>
             <label htmlFor="model" className="block text-sm font-medium">
-              Modelo
+              Model
             </label>
             <select
               id="model"
               value={model}
-              onChange={(evento) => setModel(evento.target.value)}
+              onChange={(event) => setModel(event.target.value)}
               className="mt-2 w-full rounded-md border border-black/15 bg-transparent px-3 py-2 text-sm outline-none focus:border-black/40 dark:border-white/15 dark:focus:border-white/40"
             >
-              {models.map((opcao) => (
-                <option key={opcao.id} value={opcao.id}>
-                  {opcao.displayName}
+              {models.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.displayName}
                 </option>
               ))}
             </select>
             <p className="mt-1.5 text-sm text-black/55 dark:text-white/55">
               {provider === "anthropic"
-                ? "Só aparecem modelos que a API confirma que suportam saída estruturada."
-                : "A OpenAI não informa capacidade dos modelos, então a lista é ampla. A verificação abaixo confirma o modelo escolhido com uma chamada mínima."}
+                ? "Only models the API confirms support structured output are shown."
+                : "OpenAI does not report model capabilities, so the list is broad. The check below confirms the chosen model with a minimal call."}
             </p>
           </div>
 
           <button
             type="button"
-            onClick={verificarESalvar}
-            disabled={!model || ocupado !== null}
+            onClick={verifyAndSave}
+            disabled={!model || busy !== null}
             className="rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40 dark:bg-white dark:text-black"
           >
-            {ocupado === "verificando" ? "Verificando…" : "Verificar e salvar"}
+            {busy === "verifying" ? "Verifying…" : "Verify and save"}
           </button>
         </>
       )}
 
-      {erro && (
+      {error && (
         <p
           role="alert"
           className="rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-400"
         >
-          {erro}
+          {error}
         </p>
       )}
     </div>

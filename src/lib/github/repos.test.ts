@@ -30,7 +30,7 @@ function repo(overrides: Partial<Repository> = {}): Repository {
 }
 
 describe("normalizeRepository", () => {
-  it("guarda só os campos que o app usa", () => {
+  it("keeps only the fields the app uses", () => {
     expect(normalizeRepository(raw())).toEqual({
       id: 1,
       name: "devidence",
@@ -46,91 +46,86 @@ describe("normalizeRepository", () => {
     });
   });
 
-  it("deriva o dono do full_name quando o owner vem nulo", () => {
+  it("derives the owner from full_name when owner comes back null", () => {
     const normalized = normalizeRepository(raw({ owner: null }));
     expect(normalized.owner).toBe("caioapolonio");
   });
 
-  it("preserva o sinal de repositório privado", () => {
+  it("preserves the private-repository signal", () => {
     expect(normalizeRepository(raw({ private: true })).isPrivate).toBe(true);
   });
 });
 
 describe("sortByRecentActivity", () => {
-  it("coloca os mais recentes primeiro", () => {
-    const ordenados = sortByRecentActivity([
-      repo({ fullName: "a/antigo", pushedAt: "2025-01-01T00:00:00Z" }),
-      repo({ fullName: "a/novo", pushedAt: "2026-07-01T00:00:00Z" }),
-      repo({ fullName: "a/medio", pushedAt: "2026-01-01T00:00:00Z" }),
+  it("puts the most recent first", () => {
+    const sorted = sortByRecentActivity([
+      repo({ fullName: "a/old", pushedAt: "2025-01-01T00:00:00Z" }),
+      repo({ fullName: "a/new", pushedAt: "2026-07-01T00:00:00Z" }),
+      repo({ fullName: "a/mid", pushedAt: "2026-01-01T00:00:00Z" }),
     ]);
 
-    expect(ordenados.map((r) => r.fullName)).toEqual([
-      "a/novo",
-      "a/medio",
-      "a/antigo",
-    ]);
+    expect(sorted.map((r) => r.fullName)).toEqual(["a/new", "a/mid", "a/old"]);
   });
 
-  it("manda repositório sem push para o fim, sem descartar", () => {
-    const ordenados = sortByRecentActivity([
-      repo({ fullName: "a/vazio", pushedAt: null }),
-      repo({ fullName: "a/ativo", pushedAt: "2026-07-01T00:00:00Z" }),
+  it("sends a repository with no pushes to the end, without dropping it", () => {
+    const sorted = sortByRecentActivity([
+      repo({ fullName: "a/empty", pushedAt: null }),
+      repo({ fullName: "a/active", pushedAt: "2026-07-01T00:00:00Z" }),
     ]);
 
-    expect(ordenados.map((r) => r.fullName)).toEqual(["a/ativo", "a/vazio"]);
-    expect(ordenados).toHaveLength(2);
+    expect(sorted.map((r) => r.fullName)).toEqual(["a/active", "a/empty"]);
+    expect(sorted).toHaveLength(2);
   });
 
-  it("desempata por nome para a ordem ser estável", () => {
-    const mesmaData = "2026-07-01T00:00:00Z";
-    const ordenados = sortByRecentActivity([
-      repo({ fullName: "z/projeto", pushedAt: mesmaData }),
-      repo({ fullName: "a/projeto", pushedAt: mesmaData }),
+  it("breaks ties by name so the order is stable", () => {
+    const sameDate = "2026-07-01T00:00:00Z";
+    const sorted = sortByRecentActivity([
+      repo({ fullName: "z/project", pushedAt: sameDate }),
+      repo({ fullName: "a/project", pushedAt: sameDate }),
     ]);
 
-    expect(ordenados.map((r) => r.fullName)).toEqual([
-      "a/projeto",
-      "z/projeto",
-    ]);
+    expect(sorted.map((r) => r.fullName)).toEqual(["a/project", "z/project"]);
   });
 
-  it("não altera o array recebido", () => {
+  it("does not mutate the given array", () => {
     const original = [
-      repo({ fullName: "a/antigo", pushedAt: "2025-01-01T00:00:00Z" }),
-      repo({ fullName: "a/novo", pushedAt: "2026-07-01T00:00:00Z" }),
+      repo({ fullName: "a/old", pushedAt: "2025-01-01T00:00:00Z" }),
+      repo({ fullName: "a/new", pushedAt: "2026-07-01T00:00:00Z" }),
     ];
     sortByRecentActivity(original);
-    expect(original[0].fullName).toBe("a/antigo");
+    expect(original[0].fullName).toBe("a/old");
   });
 });
 
 describe("filterRepositories", () => {
-  const repositorios = [
-    repo({ fullName: "caioapolonio/devidence", description: "Relatórios" }),
+  const repositories = [
+    repo({ fullName: "caioapolonio/devidence", description: "Reports" }),
     repo({ fullName: "caioapolonio/cinebaltar", description: null }),
-    repo({ fullName: "empresa/API-Pagamentos", description: "Cobrança" }),
+    repo({ fullName: "company/API-Payments", description: "Cobrança" }),
   ];
 
-  it("devolve tudo quando a busca está vazia", () => {
-    expect(filterRepositories(repositorios, "   ")).toHaveLength(3);
+  it("returns everything when the query is empty", () => {
+    expect(filterRepositories(repositories, "   ")).toHaveLength(3);
   });
 
-  it("ignora maiúsculas", () => {
-    const achados = filterRepositories(repositorios, "api-pagamentos");
-    expect(achados.map((r) => r.fullName)).toEqual(["empresa/API-Pagamentos"]);
+  it("ignores case", () => {
+    const found = filterRepositories(repositories, "api-payments");
+    expect(found.map((r) => r.fullName)).toEqual(["company/API-Payments"]);
   });
 
-  it("ignora acentos nos dois sentidos", () => {
-    expect(filterRepositories(repositorios, "relatorios")).toHaveLength(1);
-    expect(filterRepositories(repositorios, "cobrança")).toHaveLength(1);
+  it("ignores accents in both directions", () => {
+    const withAccent = filterRepositories(repositories, "cobrança");
+    const withoutAccent = filterRepositories(repositories, "cobranca");
+    expect(withAccent.map((r) => r.fullName)).toEqual(["company/API-Payments"]);
+    expect(withoutAccent.map((r) => r.fullName)).toEqual(["company/API-Payments"]);
   });
 
-  it("também procura na descrição", () => {
-    const achados = filterRepositories(repositorios, "cobranca");
-    expect(achados.map((r) => r.fullName)).toEqual(["empresa/API-Pagamentos"]);
+  it("also searches the description", () => {
+    const found = filterRepositories(repositories, "reports");
+    expect(found.map((r) => r.fullName)).toEqual(["caioapolonio/devidence"]);
   });
 
-  it("devolve vazio quando nada bate", () => {
-    expect(filterRepositories(repositorios, "inexistente")).toEqual([]);
+  it("returns empty when nothing matches", () => {
+    expect(filterRepositories(repositories, "nonexistent")).toEqual([]);
   });
 });

@@ -10,10 +10,27 @@ export function Sidebar() {
 
   return (
     <nav
-      aria-label="Seções"
+      aria-label="Sections"
       className="w-56 shrink-0 border-r border-black/10 dark:border-white/10"
     >
-      <div className="px-4 py-4 text-sm font-semibold tracking-tight">devidence</div>
+      {/* The wordmark is the home link, styled like a terminal prompt. The
+          blinking caret is pure CSS (see globals.css) so there's no client work
+          just to animate a cursor. */}
+      <Link
+        href="/"
+        aria-label="devidence home"
+        className="flex items-center gap-1 px-4 py-4 font-mono text-sm font-semibold tracking-tight"
+      >
+        <span>devidence</span>
+        <span aria-hidden className="text-black/40 dark:text-white/40">
+          {">"}
+        </span>
+        <span
+          aria-hidden
+          className="inline-block h-4 w-2 translate-y-[1px] animate-caret bg-black/40 dark:bg-white/40"
+        />
+      </Link>
+
       <ul className="px-2">
         {destinations.map((destination) => {
           const isActive =

@@ -2,12 +2,12 @@ import { PageHeader } from "@/components/PageHeader";
 import { RepoPicker } from "@/components/RepoPicker";
 import { MAX_PERIOD_DAYS } from "@/lib/period";
 
-export default function NovoRelatorioPage() {
+export default function NewReportPage() {
   return (
     <>
       <PageHeader
-        title="Novo relatório"
-        subtitle={`Escolha um projeto e um período de até ${MAX_PERIOD_DAYS} dias. O relatório cobre a sua contribuição, com cada afirmação ligada a um commit, PR, review, issue ou release.`}
+        title="New report"
+        subtitle={`Pick a project and a window of up to ${MAX_PERIOD_DAYS} days. The report covers your contribution, with every claim tied to a commit, PR, review, issue, or release.`}
       />
       <RepoPicker />
     </>

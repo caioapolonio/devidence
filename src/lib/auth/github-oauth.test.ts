@@ -12,30 +12,30 @@ import {
 } from "@/lib/auth/github-oauth";
 
 describe("createState", () => {
-  it("gera valor longo o bastante para não ser adivinhado", () => {
-    // 32 bytes em hex.
+  it("generates a value long enough not to be guessed", () => {
+    // 32 bytes in hex.
     expect(createState()).toHaveLength(64);
   });
 
-  it("não repete entre chamadas", () => {
-    const amostras = new Set(Array.from({ length: 100 }, () => createState()));
-    expect(amostras.size).toBe(100);
+  it("does not repeat across calls", () => {
+    const samples = new Set(Array.from({ length: 100 }, () => createState()));
+    expect(samples.size).toBe(100);
   });
 });
 
 describe("isValidState", () => {
-  it("aceita apenas o valor idêntico", () => {
+  it("accepts only the identical value", () => {
     const state = createState();
     expect(isValidState(state, state)).toBe(true);
   });
 
-  it("rejeita valor diferente", () => {
+  it("rejects a different value", () => {
     expect(isValidState(createState(), createState())).toBe(false);
   });
 
-  // Estes são os casos que abrem a porta para CSRF: sem cookie, sem parâmetro,
-  // ou com string vazia, a comparação não pode passar por acidente.
-  it("rejeita quando algum dos lados está ausente", () => {
+  // These are the cases that open the door to CSRF: with no cookie, no
+  // parameter, or an empty string, the comparison must not pass by accident.
+  it("rejects when either side is missing", () => {
     const state = createState();
     expect(isValidState(state, undefined)).toBe(false);
     expect(isValidState(undefined, state)).toBe(false);
@@ -43,7 +43,7 @@ describe("isValidState", () => {
     expect(isValidState("", "")).toBe(false);
   });
 
-  it("rejeita prefixo do valor correto", () => {
+  it("rejects a prefix of the correct value", () => {
     const state = createState();
     expect(isValidState(state.slice(0, 32), state)).toBe(false);
   });
@@ -54,23 +54,23 @@ describe("buildAuthorizeUrl", () => {
     buildAuthorizeUrl({
       clientId: "Iv1.abc123",
       redirectUri: "https://devidence.app/api/auth/callback",
-      state: "estado-fixo",
+      state: "fixed-state",
     }),
   );
 
-  it("aponta para o endpoint de autorização do GitHub", () => {
+  it("points at GitHub's authorize endpoint", () => {
     expect(url.origin + url.pathname).toBe(
       "https://github.com/login/oauth/authorize",
     );
   });
 
-  it("pede exatamente os escopos declarados, separados por espaço", () => {
+  it("requests exactly the declared scopes, space-separated", () => {
     expect(url.searchParams.get("scope")).toBe("read:user repo");
     expect(GITHUB_SCOPES).toEqual(["read:user", "repo"]);
   });
 
-  it("leva o state e o redirect", () => {
-    expect(url.searchParams.get("state")).toBe("estado-fixo");
+  it("carries the state and the redirect", () => {
+    expect(url.searchParams.get("state")).toBe("fixed-state");
     expect(url.searchParams.get("redirect_uri")).toBe(
       "https://devidence.app/api/auth/callback",
     );
@@ -79,11 +79,11 @@ describe("buildAuthorizeUrl", () => {
 });
 
 describe("buildRedirectUri", () => {
-  it("monta o callback a partir da origem da aplicação", () => {
+  it("builds the callback from the app's origin", () => {
     expect(buildRedirectUri("http://localhost:3000")).toBe(
       "http://localhost:3000/api/auth/callback",
     );
-    // Não duplica a barra quando a origem já termina com uma.
+    // Does not double the slash when the origin already ends with one.
     expect(buildRedirectUri("https://devidence.app/")).toBe(
       "https://devidence.app/api/auth/callback",
     );
@@ -91,12 +91,12 @@ describe("buildRedirectUri", () => {
 });
 
 describe("mapGitHubError", () => {
-  it("distingue recusa do usuário de falha genérica", () => {
-    expect(mapGitHubError("access_denied")).toBe("acesso_negado");
-    expect(mapGitHubError("bad_verification_code")).toBe("troca_falhou");
+  it("tells a user decline apart from a generic failure", () => {
+    expect(mapGitHubError("access_denied")).toBe("access_denied");
+    expect(mapGitHubError("bad_verification_code")).toBe("exchange_failed");
   });
 
-  it("devolve null quando não houve erro", () => {
+  it("returns null when there was no error", () => {
     expect(mapGitHubError(null)).toBeNull();
   });
 });
@@ -104,12 +104,12 @@ describe("mapGitHubError", () => {
 describe("exchangeCodeForToken", () => {
   const params = {
     clientId: "id",
-    clientSecret: "segredo",
-    code: "codigo",
+    clientSecret: "secret",
+    code: "code",
     redirectUri: "http://localhost:3000/api/auth/callback",
   };
 
-  it("pede JSON explicitamente — sem isso o GitHub responde form-encoded", async () => {
+  it("asks for JSON explicitly, since without it GitHub replies form-encoded", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () =>
       Response.json({ access_token: "gho_token" }),
     );
@@ -122,8 +122,8 @@ describe("exchangeCodeForToken", () => {
     );
   });
 
-  it("devolve o token quando a troca dá certo", async () => {
-    const fetchImpl = vi.fn(async () =>
+  it("returns the token when the exchange succeeds", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       Response.json({ access_token: "gho_token" }),
     );
     await expect(exchangeCodeForToken({ ...params, fetchImpl })).resolves.toBe(
@@ -131,9 +131,9 @@ describe("exchangeCodeForToken", () => {
     );
   });
 
-  it("devolve null quando o GitHub responde erro no corpo com status 200", async () => {
-    // O GitHub responde 200 com {error: ...} para code inválido.
-    const fetchImpl = vi.fn(async () =>
+  it("returns null when GitHub replies with an error body at status 200", async () => {
+    // GitHub replies 200 with {error: ...} for an invalid code.
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       Response.json({ error: "bad_verification_code" }),
     );
     await expect(
@@ -141,8 +141,10 @@ describe("exchangeCodeForToken", () => {
     ).resolves.toBeNull();
   });
 
-  it("devolve null quando a resposta não é ok", async () => {
-    const fetchImpl = vi.fn(async () => new Response("", { status: 500 }));
+  it("returns null when the response is not ok", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () => new Response("", { status: 500 }),
+    );
     await expect(
       exchangeCodeForToken({ ...params, fetchImpl }),
     ).resolves.toBeNull();
@@ -150,8 +152,8 @@ describe("exchangeCodeForToken", () => {
 });
 
 describe("fetchGitHubUser", () => {
-  it("normaliza avatar_url para avatarUrl", async () => {
-    const fetchImpl = vi.fn(async () =>
+  it("normalizes avatar_url to avatarUrl", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(async () =>
       Response.json({
         id: 101,
         login: "caioapolonio",
@@ -168,7 +170,7 @@ describe("fetchGitHubUser", () => {
     });
   });
 
-  it("envia o token como Bearer", async () => {
+  it("sends the token as a Bearer", async () => {
     const fetchImpl = vi.fn<typeof fetch>(async () =>
       Response.json({ id: 1, login: "x", name: null, avatar_url: "u" }),
     );
@@ -181,8 +183,10 @@ describe("fetchGitHubUser", () => {
     );
   });
 
-  it("devolve null quando o token não serve", async () => {
-    const fetchImpl = vi.fn(async () => new Response("", { status: 401 }));
-    await expect(fetchGitHubUser("expirado", fetchImpl)).resolves.toBeNull();
+  it("returns null when the token is no good", async () => {
+    const fetchImpl = vi.fn<typeof fetch>(
+      async () => new Response("", { status: 401 }),
+    );
+    await expect(fetchGitHubUser("expired", fetchImpl)).resolves.toBeNull();
   });
 });

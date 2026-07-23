@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ erro: "Sessão expirada." }, { status: 401 });
+    return NextResponse.json({ error: "Session expired." }, { status: 401 });
   }
 
   try {
@@ -17,9 +17,9 @@ export async function GET() {
     );
     return NextResponse.json({ repositories });
   } catch (error) {
-    // Token revogado no GitHub continua parecendo válido para nós até a
-    // primeira chamada falhar. 401 aqui faz o cliente mandar relogar em vez de
-    // mostrar "erro desconhecido".
+    // A token revoked on GitHub still looks valid to us until the first call
+    // fails. A 401 here tells the client to log in again instead of showing an
+    // "unknown error".
     if (
       typeof error === "object" &&
       error !== null &&
@@ -27,13 +27,13 @@ export async function GET() {
       error.status === 401
     ) {
       return NextResponse.json(
-        { erro: "Sua autorização no GitHub não é mais válida. Entre de novo." },
+        { error: "Your GitHub authorization is no longer valid. Sign in again." },
         { status: 401 },
       );
     }
 
     return NextResponse.json(
-      { erro: "Não foi possível listar seus repositórios." },
+      { error: "Could not list your repositories." },
       { status: 502 },
     );
   }
