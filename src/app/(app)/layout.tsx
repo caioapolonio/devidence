@@ -5,11 +5,11 @@ import { UserMenu } from "@/components/UserMenu";
 import { getCurrentUser } from "@/lib/session";
 
 /**
- * Tudo abaixo deste layout exige sessão.
+ * Everything below this layout requires a session.
  *
- * A checagem fica aqui, e não em middleware, porque a sessão é lida com
- * `cookies()` no runtime Node — middleware roda no edge e obrigaria a duplicar
- * a configuração de cifra em dois lugares.
+ * The check lives here, not in middleware, because the session is read with
+ * `cookies()` on the Node runtime. Middleware runs on the edge and would force
+ * the cipher configuration to be duplicated in two places.
  */
 export default async function AppLayout({
   children,

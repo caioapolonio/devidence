@@ -8,21 +8,21 @@ import {
 } from "@/lib/github/repos";
 
 /**
- * Cliente do GitHub para um usuário.
+ * A GitHub client for one user.
  *
- * O token entra por parâmetro e não é guardado em nada de escopo global: cada
- * request cria o seu, com o token da sessão de quem fez o request. Um cliente
- * compartilhado entre requests seria a forma mais fácil de vazar dados de um
- * usuário para outro.
+ * The token comes in as a parameter and is never stored in anything of global
+ * scope: each request builds its own, with the token from that request's
+ * session. A client shared across requests would be the easiest way to leak one
+ * user's data to another.
  */
 export function createGitHubClient(accessToken: string): Octokit {
   return new Octokit({
     auth: accessToken,
     userAgent: "devidence",
     throttle: {
-      // O throttling do octokit já espera o tempo indicado pelo GitHub; estes
-      // handlers só decidem se vale a pena tentar de novo. Sem eles o octokit
-      // emite aviso e desiste na primeira vez.
+      // Octokit's throttling already waits the time GitHub asks for; these
+      // handlers only decide whether it's worth trying again. Without them
+      // octokit warns and gives up on the first hit.
       onRateLimit: (
         _retryAfter: number,
         _options: unknown,
@@ -40,15 +40,13 @@ export function createGitHubClient(accessToken: string): Octokit {
 }
 
 /**
- * Repositórios em que o usuário tem acesso de escrita ou é dono.
+ * Repositories where the user has write access or is the owner.
  *
- * `affiliation` exclui repositórios em que a pessoa só tem acesso de leitura:
- * relatar contribuição própria em projeto que você só consegue ler é caso raro
- * o bastante para não valer poluir a lista.
+ * `affiliation` excludes repositories where the person only has read access:
+ * reporting on your own contribution to a project you can merely read is rare
+ * enough not to clutter the list.
  */
-export async function listRepositories(
-  client: Octokit,
-): Promise<Repository[]> {
+export async function listRepositories(client: Octokit): Promise<Repository[]> {
   const raw = (await client.paginate(
     client.rest.repos.listForAuthenticatedUser,
     {

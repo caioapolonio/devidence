@@ -5,15 +5,15 @@ import { isProduction, serverEnv } from "@/lib/env";
 import type { LlmCredentials } from "@/lib/llm/types";
 
 /**
- * Sessão do usuário.
+ * User session.
  *
- * O token do GitHub vive **apenas** aqui: dentro do cookie cifrado, no browser
- * de quem logou. Não existe tabela de tokens, custódia nem rotação, porque o
- * produto não faz sincronização agendada — tudo acontece dentro de um request
- * iniciado pela pessoa dona do token.
+ * The GitHub token lives here and nowhere else: inside the encrypted cookie, in
+ * the browser of whoever logged in. There is no token table, no custody, no
+ * rotation, because the product does no scheduled syncing. Everything happens
+ * within a request started by the very person who owns the token.
  *
- * A consequência é deliberada: sem sessão ativa, o servidor não consegue tocar
- * em nenhum repositório de ninguém.
+ * The consequence is deliberate: with no active session, the server cannot
+ * touch anyone's repositories.
  */
 export type SessionUser = {
   id: number;
@@ -26,16 +26,16 @@ export type SessionUser = {
 export type SessionData = {
   user?: SessionUser;
   /**
-   * Chave de LLM do próprio usuário. Mesmo tratamento do token do GitHub:
-   * cifrada no cookie, nunca em banco, some ao sair.
+   * The user's own LLM key. Same treatment as the GitHub token: encrypted in
+   * the cookie, never in a database, gone on sign-out.
    */
   llm?: LlmCredentials;
 };
 
 /**
- * Função, não constante: ler o segredo no topo do módulo faria o `next build`
- * quebrar em qualquer ambiente sem `.env`, inclusive no CI, que não precisa de
- * segredo nenhum para compilar.
+ * A function, not a constant: reading the secret at module load would make
+ * `next build` fail in any environment without a `.env`, including CI, which
+ * needs no secret to compile.
  */
 export function getSessionOptions(): SessionOptions {
   return {
@@ -46,8 +46,8 @@ export function getSessionOptions(): SessionOptions {
       sameSite: "lax",
       secure: isProduction,
       path: "/",
-      // Sete dias. Depois disso é relogin — o token do GitHub não é renovado
-      // porque não há refresh token no OAuth clássico.
+      // Seven days. After that it's a re-login: the GitHub token is not
+      // refreshed because classic OAuth has no refresh token.
       maxAge: 60 * 60 * 24 * 7,
     },
   };
@@ -57,13 +57,13 @@ export async function getSession() {
   return getIronSession<SessionData>(await cookies(), getSessionOptions());
 }
 
-/** Usuário logado, ou `null`. Nunca lança. */
+/** Logged-in user, or `null`. Never throws. */
 export async function getCurrentUser(): Promise<SessionUser | null> {
   const session = await getSession();
   return session.user ?? null;
 }
 
-/** Credenciais de LLM da sessão, ou `null`. */
+/** The session's LLM credentials, or `null`. */
 export async function getLlmCredentials(): Promise<LlmCredentials | null> {
   const session = await getSession();
   return session.llm ?? null;

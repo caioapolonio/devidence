@@ -7,19 +7,33 @@ import {
 } from "@/lib/llm/models";
 import type { LlmModel } from "@/lib/llm/types";
 
-function erro(status: number, message = ""): unknown {
-  return Object.assign(new Error(message), { status });
+/** SDK-style error: HTTP status plus an optional type/code and message. */
+function apiError(
+  status: number,
+  extra: { type?: string; code?: string; message?: string } = {},
+): unknown {
+  return Object.assign(new Error(extra.message ?? ""), {
+    status,
+    type: extra.type,
+    code: extra.code,
+  });
 }
 
 describe("isSelectableOpenAIModel", () => {
-  it("mantém modelos de conversa", () => {
-    for (const id of ["gpt-5", "gpt-5-nano", "gpt-4o", "o3-mini", "chatgpt-4o-latest"]) {
+  it("keeps conversational models", () => {
+    for (const id of [
+      "gpt-5",
+      "gpt-5-nano",
+      "gpt-4o",
+      "o3-mini",
+      "chatgpt-4o-latest",
+    ]) {
       expect(isSelectableOpenAIModel(id), id).toBe(true);
     }
   });
 
-  it("descarta o que não conversa", () => {
-    const descartados = [
+  it("drops what does not converse", () => {
+    const dropped = [
       "text-embedding-3-large",
       "omni-moderation-latest",
       "whisper-1",
@@ -32,79 +46,128 @@ describe("isSelectableOpenAIModel", () => {
       "davinci-002",
       "babbage-002",
     ];
-    for (const id of descartados) {
+    for (const id of dropped) {
       expect(isSelectableOpenAIModel(id), id).toBe(false);
     }
   });
 
-  // A regra é filtrar por exclusão justamente para isto: uma família nova que
-  // eu nunca vi precisa aparecer, e a sonda decide se serve.
-  it("deixa passar família desconhecida em vez de escondê-la", () => {
+  // The rule filters by exclusion for exactly this: an unknown new family must
+  // show up, and the probe decides whether it works.
+  it("lets an unknown family through instead of hiding it", () => {
     expect(isSelectableOpenAIModel("gpt-7-turbo-2027")).toBe(true);
-    expect(isSelectableOpenAIModel("modelo-que-ainda-nao-existe")).toBe(true);
+    expect(isSelectableOpenAIModel("some-model-that-does-not-exist-yet")).toBe(
+      true,
+    );
   });
 
-  it("ignora maiúsculas", () => {
+  it("ignores case", () => {
     expect(isSelectableOpenAIModel("TEXT-EMBEDDING-3-SMALL")).toBe(false);
   });
 });
 
 describe("sortModels", () => {
-  const modelo = (id: string): LlmModel => ({
+  const model = (id: string): LlmModel => ({
     id,
     displayName: id,
     supportsStructuredOutputs: true,
     supportsEffort: null,
   });
 
-  it("ordena de forma estável e previsível", () => {
-    const ordenados = sortModels([modelo("gpt-5"), modelo("gpt-4o"), modelo("o3")]);
-    expect(ordenados.map((m) => m.id)).toEqual(["gpt-4o", "gpt-5", "o3"]);
+  it("sorts stably and predictably", () => {
+    const sorted = sortModels([model("gpt-5"), model("gpt-4o"), model("o3")]);
+    expect(sorted.map((m) => m.id)).toEqual(["gpt-4o", "gpt-5", "o3"]);
   });
 
-  it("não altera o array recebido", () => {
-    const original = [modelo("z"), modelo("a")];
+  it("does not mutate the given array", () => {
+    const original = [model("z"), model("a")];
     sortModels(original);
     expect(original[0].id).toBe("z");
   });
 });
 
 describe("describeCredentialError", () => {
-  it("distingue chave inválida de falta de permissão", () => {
-    expect(describeCredentialError(erro(401))).toBe("chave_invalida");
-    expect(describeCredentialError(erro(403))).toBe("sem_permissao");
+  it("tells an invalid key apart from a permission problem", () => {
+    expect(describeCredentialError(apiError(401))).toBe("invalid_key");
+    expect(describeCredentialError(apiError(403))).toBe("no_permission");
   });
 
-  it("reconhece modelo inexistente e limite de uso", () => {
-    expect(describeCredentialError(erro(404))).toBe("modelo_inexistente");
-    expect(describeCredentialError(erro(429))).toBe("limite_atingido");
+  it("recognizes an unknown model", () => {
+    expect(describeCredentialError(apiError(404))).toBe("unknown_model");
   });
 
-  // Este é o caso que sustenta a garantia do produto: sem identificá-lo, um
-  // modelo sem structured outputs viraria "erro desconhecido".
-  it("identifica recusa de schema como falta de structured outputs", () => {
-    const variantes = [
+  // The case that sustains the product's promise: without identifying the schema
+  // rejection, a model without structured outputs would read as "unknown error".
+  it("identifies a schema rejection as a lack of structured outputs", () => {
+    const variants = [
       "Invalid parameter: 'response_format' of type 'json_schema' is not supported with this model.",
       "output_config.format is not supported by this model",
       "This model does not support structured outputs",
       "Unsupported schema for strict mode",
     ];
-    for (const mensagem of variantes) {
-      expect(describeCredentialError(erro(400, mensagem)), mensagem).toBe(
-        "sem_structured_outputs",
+    for (const message of variants) {
+      expect(describeCredentialError(apiError(400, { message })), message).toBe(
+        "no_structured_outputs",
       );
     }
   });
 
-  it("não confunde outro 400 com falta de structured outputs", () => {
-    expect(describeCredentialError(erro(400, "unknown model id"))).toBe(
-      "modelo_inexistente",
+  it("does not mistake another 400 for a lack of structured outputs", () => {
+    expect(describeCredentialError(apiError(400, { message: "unknown model id" }))).toBe(
+      "unknown_model",
     );
   });
 
-  it("cai em indisponível para falha de rede ou erro sem status", () => {
-    expect(describeCredentialError(new Error("fetch failed"))).toBe("indisponivel");
-    expect(describeCredentialError(erro(500))).toBe("indisponivel");
-    expect(describeCredentialError(null)).toBe("indisponivel");
+  // Fix: running out of credits used to point at the wrong problem. Anthropic
+  // returns 402, or 400 with a "credit balance" message; OpenAI returns 429 with
+  // type insufficient_quota. None of them should read as "unknown model",
+  // "rate limited", or "unavailable".
+  describe("insufficient credits", () => {
+    it("maps Anthropic's 402 billing error", () => {
+      expect(
+        describeCredentialError(apiError(402, { type: "billing_error" })),
+      ).toBe("insufficient_credits");
+    });
+
+    it("maps Anthropic's low-balance 400 by message, not as unknown model", () => {
+      expect(
+        describeCredentialError(
+          apiError(400, {
+            message:
+              "Your credit balance is too low to access the Anthropic API.",
+          }),
+        ),
+      ).toBe("insufficient_credits");
+    });
+
+    it("maps OpenAI's insufficient_quota by type, not as a rate limit", () => {
+      expect(
+        describeCredentialError(
+          apiError(429, {
+            type: "insufficient_quota",
+            message:
+              "You exceeded your current quota, please check your plan and billing details.",
+          }),
+        ),
+      ).toBe("insufficient_credits");
+    });
+
+    it("still treats a real rate limit as rate_limited", () => {
+      expect(
+        describeCredentialError(
+          apiError(429, {
+            type: "rate_limit_exceeded",
+            message: "Rate limit reached. Please try again in 1s.",
+          }),
+        ),
+      ).toBe("rate_limited");
+    });
+  });
+
+  it("falls back to unavailable for a network failure or a statusless error", () => {
+    expect(describeCredentialError(new Error("fetch failed"))).toBe(
+      "unavailable",
+    );
+    expect(describeCredentialError(apiError(500))).toBe("unavailable");
+    expect(describeCredentialError(null)).toBe("unavailable");
   });
 });

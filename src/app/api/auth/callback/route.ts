@@ -16,18 +16,18 @@ export const runtime = "nodejs";
 
 function failure(request: NextRequest, reason: AuthFailure) {
   const url = new URL("/login", request.url);
-  url.searchParams.set("erro", reason);
+  url.searchParams.set("error", reason);
   const response = NextResponse.redirect(url);
   response.cookies.delete(STATE_COOKIE);
   return response;
 }
 
 /**
- * Retorno do GitHub.
+ * GitHub's return.
  *
- * A ordem importa: o `state` é conferido **antes** de qualquer chamada de rede.
- * Trocar o code primeiro e validar depois transformaria um pedido forjado numa
- * troca real de token.
+ * Order matters: the `state` is checked before any network call. Exchanging the
+ * code first and validating afterwards would turn a forged request into a real
+ * token exchange.
  */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
@@ -37,11 +37,11 @@ export async function GET(request: NextRequest) {
 
   const expectedState = request.cookies.get(STATE_COOKIE)?.value;
   if (!isValidState(params.get("state"), expectedState)) {
-    return failure(request, "estado_invalido");
+    return failure(request, "invalid_state");
   }
 
   const code = params.get("code");
-  if (!code) return failure(request, "troca_falhou");
+  if (!code) return failure(request, "exchange_failed");
 
   const accessToken = await exchangeCodeForToken({
     clientId: serverEnv.githubClientId,
@@ -49,17 +49,18 @@ export async function GET(request: NextRequest) {
     code,
     redirectUri: buildRedirectUri(serverEnv.appUrl),
   });
-  if (!accessToken) return failure(request, "troca_falhou");
+  if (!accessToken) return failure(request, "exchange_failed");
 
   const user = await fetchGitHubUser(accessToken);
-  if (!user) return failure(request, "usuario_indisponivel");
+  if (!user) return failure(request, "user_unavailable");
 
   const session = await getSession();
   session.user = { ...user, accessToken };
   await session.save();
 
   const response = NextResponse.redirect(new URL("/", request.url));
-  // O state cumpriu a função; deixá-lo no browser só aumenta a janela de replay.
+  // The state has done its job; leaving it in the browser only widens the replay
+  // window.
   response.cookies.delete(STATE_COOKIE);
   return response;
 }

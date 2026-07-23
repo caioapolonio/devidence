@@ -1,18 +1,19 @@
 /**
- * Variáveis de ambiente do servidor.
+ * Server-side environment variables.
  *
- * Ler por aqui em vez de espalhar `process.env` pelo código dá uma falha clara
- * na primeira chamada quando falta configuração, em vez de um `undefined` que
- * só vira erro estranho três camadas adiante.
+ * Reading through this module instead of scattering `process.env` around the
+ * codebase gives a clear failure on the first call when configuration is
+ * missing, instead of an `undefined` that only turns into a strange error
+ * three layers deeper.
  *
- * Nada deste módulo pode ser importado por componente de cliente.
+ * Nothing here may be imported by a client component.
  */
 
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
     throw new Error(
-      `A variável de ambiente ${name} não está configurada. Veja o .env.example.`,
+      `Environment variable ${name} is not set. See .env.example.`,
     );
   }
   return value;
@@ -25,17 +26,17 @@ export const serverEnv = {
   get githubClientSecret() {
     return required("GITHUB_CLIENT_SECRET");
   },
-  /** Mínimo de 32 caracteres — exigência do iron-session. */
+  /** At least 32 characters, required by iron-session. */
   get sessionSecret() {
     const secret = required("SESSION_SECRET");
     if (secret.length < 32) {
       throw new Error(
-        "SESSION_SECRET precisa de pelo menos 32 caracteres. Gere um com: openssl rand -base64 32",
+        "SESSION_SECRET must be at least 32 characters. Generate one with: openssl rand -base64 32",
       );
     }
     return secret;
   },
-  /** Origem pública da aplicação, usada para montar o redirect do OAuth. */
+  /** Public origin of the app, used to build the OAuth redirect. */
   get appUrl() {
     return process.env.APP_URL ?? "http://localhost:3000";
   },

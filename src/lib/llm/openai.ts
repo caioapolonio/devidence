@@ -9,50 +9,51 @@ function client(apiKey: string): OpenAI {
 }
 
 /**
- * Modelos da OpenAI que a chave enxerga.
+ * OpenAI models the key can see.
  *
- * Diferente da Anthropic, `/v1/models` da OpenAI devolve só `id`, `object`,
- * `created` e `owned_by` — nenhuma informação de capacidade. Não há como saber
- * daqui se o modelo aceita structured outputs, então `supportsStructuredOutputs`
- * fica `null` e a decisão passa inteiramente para a sonda.
+ * Unlike Anthropic, OpenAI's `/v1/models` returns only `id`, `object`,
+ * `created` and `owned_by`: no capability information at all. There is no way to
+ * tell from here whether a model accepts structured outputs, so
+ * `supportsStructuredOutputs` stays `null` and the decision moves entirely to
+ * the probe.
  */
 export async function listOpenAIModels(apiKey: string): Promise<LlmModel[]> {
-  const modelos: LlmModel[] = [];
+  const models: LlmModel[] = [];
 
-  for await (const modelo of client(apiKey).models.list()) {
-    if (!isSelectableOpenAIModel(modelo.id)) continue;
+  for await (const model of client(apiKey).models.list()) {
+    if (!isSelectableOpenAIModel(model.id)) continue;
 
-    modelos.push({
-      id: modelo.id,
-      displayName: modelo.id,
+    models.push({
+      id: model.id,
+      displayName: model.id,
       supportsStructuredOutputs: null,
       supportsEffort: null,
     });
   }
 
-  return sortModels(modelos);
+  return sortModels(models);
 }
 
 /**
- * Única forma de saber se um modelo da OpenAI aceita structured outputs.
+ * The only way to know whether an OpenAI model accepts structured outputs.
  *
- * `max_completion_tokens` em vez de `max_tokens`: os modelos de raciocínio
- * recusam o parâmetro antigo. O orçamento é folgado porque esses modelos gastam
- * tokens de raciocínio antes de responder, e um teto apertado devolveria
- * resposta truncada — que seria lida como falta de suporte.
+ * `max_completion_tokens` instead of `max_tokens`: the reasoning models reject
+ * the older parameter. The budget is generous because those models spend
+ * reasoning tokens before answering, and a tight cap would return a truncated
+ * response, which would read as a lack of support.
  */
 export async function probeOpenAI(
   apiKey: string,
   model: string,
 ): Promise<boolean> {
-  const resposta = await client(apiKey).chat.completions.parse({
+  const response = await client(apiKey).chat.completions.parse({
     model,
     max_completion_tokens: 2048,
-    response_format: zodResponseFormat(ProbeSchema, "sonda"),
+    response_format: zodResponseFormat(ProbeSchema, "probe"),
     messages: [
-      { role: "user", content: "Responda com ok igual a true. Nada além disso." },
+      { role: "user", content: "Reply with ok set to true. Nothing else." },
     ],
   });
 
-  return resposta.choices[0]?.message.parsed?.ok === true;
+  return response.choices[0]?.message.parsed?.ok === true;
 }

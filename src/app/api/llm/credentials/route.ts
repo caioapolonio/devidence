@@ -8,22 +8,22 @@ import { getSession } from "@/lib/session";
 export const runtime = "nodejs";
 
 /**
- * Estado atual das credenciais.
+ * Current state of the credentials.
  *
- * Devolve provedor, modelo e data da verificação — **nunca a chave**. Uma chave
- * que sai do servidor de volta para o cliente é uma chave a mais circulando sem
- * motivo.
+ * Returns provider, model, and verification date, but never the key. A key that
+ * leaves the server back to the client is one more key circulating for no
+ * reason.
  */
 export async function GET() {
   const session = await getSession();
   if (!session.user) {
-    return NextResponse.json({ erro: "Sessão expirada." }, { status: 401 });
+    return NextResponse.json({ error: "Session expired." }, { status: 401 });
   }
 
-  if (!session.llm) return NextResponse.json({ credenciais: null });
+  if (!session.llm) return NextResponse.json({ credentials: null });
 
   return NextResponse.json({
-    credenciais: {
+    credentials: {
       provider: session.llm.provider,
       model: session.llm.model,
       verifiedAt: session.llm.verifiedAt,
@@ -32,75 +32,75 @@ export async function GET() {
 }
 
 /**
- * Sonda o modelo e guarda a credencial.
+ * Probes the model and stores the credential.
  *
- * A sonda é o portão: sem ela, um modelo que não devolve saída estruturada só
- * seria descoberto na hora de gerar o relatório — quando já se gastou a busca
- * inteira no GitHub e o usuário está esperando um PDF.
+ * The probe is the gate: without it, a model that does not return structured
+ * output would only be discovered at report-generation time, after the whole
+ * GitHub fetch has been spent and the user is waiting for a PDF.
  */
 export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session.user) {
-    return NextResponse.json({ erro: "Sessão expirada." }, { status: 401 });
+    return NextResponse.json({ error: "Session expired." }, { status: 401 });
   }
 
-  const corpo = (await request.json().catch(() => null)) as {
+  const body = (await request.json().catch(() => null)) as {
     provider?: unknown;
     apiKey?: unknown;
     model?: unknown;
   } | null;
 
-  if (!corpo || !isLlmProvider(corpo.provider)) {
-    return NextResponse.json({ erro: "Provedor inválido." }, { status: 400 });
+  if (!body || !isLlmProvider(body.provider)) {
+    return NextResponse.json({ error: "Invalid provider." }, { status: 400 });
   }
-  if (typeof corpo.apiKey !== "string" || corpo.apiKey.trim().length === 0) {
-    return NextResponse.json({ erro: "Informe a chave." }, { status: 400 });
+  if (typeof body.apiKey !== "string" || body.apiKey.trim().length === 0) {
+    return NextResponse.json({ error: "Enter a key." }, { status: 400 });
   }
-  if (typeof corpo.model !== "string" || corpo.model.trim().length === 0) {
-    return NextResponse.json({ erro: "Escolha um modelo." }, { status: 400 });
+  if (typeof body.model !== "string" || body.model.trim().length === 0) {
+    return NextResponse.json({ error: "Pick a model." }, { status: 400 });
   }
 
-  const apiKey = corpo.apiKey.trim();
-  const model = corpo.model.trim();
+  const apiKey = body.apiKey.trim();
+  const model = body.model.trim();
 
   try {
-    const suporta = await probeStructuredOutputs(corpo.provider, apiKey, model);
+    const supported = await probeStructuredOutputs(body.provider, apiKey, model);
 
-    if (!suporta) {
+    if (!supported) {
       return NextResponse.json(
         {
-          erro: CREDENTIAL_MESSAGES.sem_structured_outputs,
-          motivo: "sem_structured_outputs",
+          error: CREDENTIAL_MESSAGES.no_structured_outputs,
+          reason: "no_structured_outputs",
         },
         { status: 422 },
       );
     }
   } catch (error) {
-    const motivo = describeCredentialError(error);
+    const reason = describeCredentialError(error);
     return NextResponse.json(
-      { erro: CREDENTIAL_MESSAGES[motivo], motivo },
-      { status: motivo === "indisponivel" ? 502 : 400 },
+      { error: CREDENTIAL_MESSAGES[reason], reason },
+      { status: reason === "unavailable" ? 502 : 400 },
     );
   }
 
   const verifiedAt = new Date().toISOString();
-  session.llm = { provider: corpo.provider, apiKey, model, verifiedAt };
+  session.llm = { provider: body.provider, apiKey, model, verifiedAt };
   await session.save();
 
   return NextResponse.json({
-    credenciais: { provider: corpo.provider, model, verifiedAt },
+    credentials: { provider: body.provider, model, verifiedAt },
   });
 }
 
-/** Remove a credencial da sessão. Como não há cópia em banco, isso a apaga. */
+/** Removes the credential from the session. With no database copy, this erases it. */
 export async function DELETE() {
   const session = await getSession();
   if (!session.user) {
-    return NextResponse.json({ erro: "Sessão expirada." }, { status: 401 });
+    return NextResponse.json({ error: "Session expired." }, { status: 401 });
   }
 
   delete session.llm;
   await session.save();
 
-  return NextResponse.json({ credenciais: null });
+  return NextResponse.json({ credentials: null });
 }

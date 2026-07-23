@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
-// O avatar vem de avatars.githubusercontent.com. Usar next/image aqui exigiria
-// liberar o domínio remoto na config só para um ícone de 28px.
+// The avatar comes from avatars.githubusercontent.com. Using next/image here
+// would mean allow-listing the remote domain in the config just for a 28px icon.
 
 export function UserMenu({
   login,
@@ -20,13 +20,13 @@ export function UserMenu({
       />
       <span className="text-sm text-black/70 dark:text-white/70">{login}</span>
 
-      {/* POST, não link: logout por GET é acionável por terceiros. */}
+      {/* POST, not a link: logout over GET is triggerable by third parties. */}
       <form action="/api/auth/logout" method="post">
         <button
           type="submit"
           className="rounded-md px-2.5 py-1 text-sm text-black/60 transition-colors hover:bg-black/[0.05] hover:text-black dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
         >
-          Sair
+          Sign out
         </button>
       </form>
     </div>
