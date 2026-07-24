@@ -25,6 +25,16 @@ export type EvidenceKind =
  */
 export type EvidenceClassification = "fact" | "inference" | "context";
 
+/**
+ * Whether the work an evidence item points at was shipped, is still in flight,
+ * or is neither. The macOS app derived this by parsing a marker out of the PR
+ * title, which was fragile and language-specific. Here it's an explicit field
+ * the builder sets from the activity data itself (a merged PR is delivered, an
+ * open one is in progress), so the validator can check delivered-vs-in-progress
+ * coverage without trusting a string.
+ */
+export type EvidenceWorkState = "delivered" | "in_progress" | "other";
+
 export type EvidenceItem = {
   id: string;
   kind: EvidenceKind;
@@ -34,6 +44,7 @@ export type EvidenceItem = {
   sha: string | null;
   isPrivateSource: boolean | null;
   classification: EvidenceClassification;
+  workState: EvidenceWorkState;
 };
 
 // U+001F, the field separator the macOS app joins coordinates with. Written as
@@ -85,6 +96,7 @@ export function makeEvidenceItem(args: {
   sha?: string | null;
   isPrivateSource?: boolean | null;
   classification: EvidenceClassification;
+  workState?: EvidenceWorkState;
   id?: string;
 }): EvidenceItem {
   const sourceUrl = args.sourceUrl ?? null;
@@ -98,5 +110,6 @@ export function makeEvidenceItem(args: {
     sha,
     isPrivateSource: args.isPrivateSource ?? null,
     classification: args.classification,
+    workState: args.workState ?? "other",
   };
 }
