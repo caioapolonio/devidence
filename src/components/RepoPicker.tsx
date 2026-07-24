@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { ReportPanel } from "@/components/ReportPanel";
 import { filterRepositories, type Repository } from "@/lib/github/repos";
 import { DEFAULT_PERIOD_DAYS, PERIOD_OPTIONS } from "@/lib/period";
 
@@ -160,22 +161,13 @@ export function RepoPicker() {
         </div>
       </fieldset>
 
-      {/* The button is deliberately inert until report generation ships: it
-          stays disabled so it never looks clickable while doing nothing. The
-          real action and its loading state arrive with the generator. */}
-      <button
-        type="button"
-        disabled
-        className="rounded-md bg-black px-4 py-2.5 text-sm font-medium text-white opacity-40 dark:bg-white dark:text-black"
-      >
-        Generate report
-      </button>
-
-      <p className="text-sm text-black/50 dark:text-white/50">
-        {selected
-          ? `Ready to report on ${selected.fullName} over the last ${days} days. Generation is the next step being built.`
-          : "Pick a project to continue."}
-      </p>
+      {selected ? (
+        <ReportPanel owner={selected.owner} repo={selected.name} days={days} />
+      ) : (
+        <p className="text-sm text-black/50 dark:text-white/50">
+          Pick a project to continue.
+        </p>
+      )}
     </div>
   );
 }
