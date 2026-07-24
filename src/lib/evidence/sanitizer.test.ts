@@ -7,10 +7,30 @@ import {
   type DiffInput,
 } from "@/lib/evidence/sanitizer";
 
+/**
+ * Secret-shaped fixtures are assembled from parts on purpose.
+ *
+ * Every value here is fabricated, but a literal token in the source looks real
+ * enough to trip GitHub's secret scanning (a Google-key-shaped fixture did just
+ * that). Splitting each into `prefix + filler` keeps no scannable token in the
+ * file, while the assembled runtime value still matches its redaction rule. Each
+ * filler length clears the rule's minimum.
+ */
+const fake = {
+  githubClassic: () => "ghp_" + "a".repeat(36),
+  githubPat: () => "github_pat_" + "b".repeat(40),
+  openai: () => "sk-" + "c".repeat(24),
+  openaiProject: () => "sk-proj-" + "d".repeat(36),
+  aws: () => "AKIA" + "E".repeat(16),
+  google: () => "AIza" + "f".repeat(35),
+  slack: () => "xoxb-" + "g".repeat(12),
+  jwt: () => "eyJ" + "h".repeat(10) + "." + "i".repeat(10) + "." + "j".repeat(10),
+};
+
 describe("sanitize: secrets are removed before anything leaves", () => {
   it("redacts known and generic secrets", () => {
-    const githubToken = "ghp_abcdefghijklmnopqrstuvwxyz1234567890";
-    const openAIKey = "sk-proj-abcdefghijklmnopqrstuvwxyz1234567890";
+    const githubToken = fake.githubClassic();
+    const openAIKey = fake.openaiProject();
     const input: DiffInput = {
       path: "src/Client.ts",
       patch: `+ const github = "${githubToken}"\n+ api_key = "${openAIKey}"\n+ password=correct-horse-battery\n+ Authorization: Bearer abcdefghijklmnop`,
@@ -30,7 +50,7 @@ describe("sanitize: secrets are removed before anything leaves", () => {
 
   it("redacts a token pasted into a file path too", () => {
     const result = sanitize([
-      { path: "src/token-ghp_abcdefghijklmnopqrstuvwxyz1234.ts", patch: "+ ok" },
+      { path: `src/token-${fake.githubClassic()}.ts`, patch: "+ ok" },
     ]);
     expect(result.included[0].path).toContain("<REDACTED_SECRET>");
   });
@@ -128,16 +148,13 @@ describe("sanitize: limits are deterministic", () => {
 describe("redactSecrets: rule coverage", () => {
   // One example per token family, so a regression in any single rule is caught.
   const cases: Array<[string, string]> = [
-    ["github classic", "ghp_abcdefghijklmnopqrstuvwxyz1234567890"],
-    ["github pat", "github_pat_11ABCDE0000abcdefghij_klmnopqrstuvwxyz1234567890"],
-    ["openai", "sk-abcdefghijklmnopqrstuvwxyz"],
-    ["aws access key", "AKIAIOSFODNN7EXAMPLE"],
-    ["google api key", "AIzaSyA1234567890abcdefghijklmnopqrstuv"],
-    ["slack", "xoxb-1234567890-abcdefghij"],
-    [
-      "jwt",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV",
-    ],
+    ["github classic", fake.githubClassic()],
+    ["github pat", fake.githubPat()],
+    ["openai", fake.openai()],
+    ["aws access key", fake.aws()],
+    ["google api key", fake.google()],
+    ["slack", fake.slack()],
+    ["jwt", fake.jwt()],
   ];
 
   for (const [name, secret] of cases) {
